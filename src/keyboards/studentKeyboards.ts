@@ -1,6 +1,17 @@
 import { InlineKeyboard } from 'grammy';
 import { IBooking } from '../models/Booking.js';
+import { IInstructorProfile } from '../models/InstructorProfile.js';
 import { calculateAvailableSlots, calculateSmartDurations } from '../utils/timeHelpers.js';
+
+export const getInstructorsKeyboard = (instructors: (IInstructorProfile & { fullName: string })[]) => {
+    const keyboard = new InlineKeyboard();
+    instructors.forEach(inst => {
+        const transText = inst.transmission === 'MANUAL' ? '🕹 Mexanika' : '🅰️ Avtomat';
+        const label = `🏎 ${inst.fullName} | ${inst.carModel} (${transText})`;
+        keyboard.text(label, `select_inst_${inst.userId}`).row();
+    });
+    return keyboard;
+};
 
 export const getDatesKeyboard = () => {
     const keyboard = new InlineKeyboard();
@@ -19,6 +30,7 @@ export const getDatesKeyboard = () => {
             added++;
         }
     }
+    keyboard.text("🔙 Orqaga", "back_to_instructors");
     return keyboard;
 };
 
@@ -51,16 +63,15 @@ export const getSmartDurationsKeyboard = (startTime: string, date: string, exist
     };
 
     durations.forEach(d => {
-        keyboard.text(formatDuration(d), `duration_${date}_${startTime}_${d}`).row();
+        keyboard.text(formatDuration(d), `duration_${d}`).row();
     });
 
-    // Go back to the time grid for this date
     keyboard.text('🔙 Orqaga', `date_${date}`);
     return keyboard;
 };
 
-export const getConfirmationKeyboard = (date: string, startTime: string, duration: number) => {
+export const getConfirmationKeyboard = () => {
     return new InlineKeyboard()
-        .text('✅ Tasdiqlash va Yuborish', `confirm_${date}_${startTime}_${duration}`)
+        .text('✅ Tasdiqlash va Yuborish', `confirm_booking`)
         .text('❌ Bekor qilish', 'cancel_booking');
 };

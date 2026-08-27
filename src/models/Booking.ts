@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import { Schema, model, Document } from "mongoose";
 
 export enum BookingStatus {
     PENDING = "PENDING",
@@ -8,27 +8,28 @@ export enum BookingStatus {
 }
 
 export interface IBooking extends Document {
-    userId: number; // References User.telegramId
-    date: string; // Format: "YYYY-MM-DD"
-    startTime: string; // Format: "HH:mm"
-    endTime: string; // Format: "HH:mm"
+    studentId: number;
+    instructorId: number;
+    date: string; // "YYYY-MM-DD"
+    startTime: string; // "14:00"
+    endTime: string; // "15:30"
     durationMinutes: number; // 30, 60, 90, 120, 150, 180
     status: BookingStatus;
     createdAt: Date;
 }
 
 const BookingSchema = new Schema<IBooking>({
-    userId: { type: Number, required: true },
+    studentId: { type: Number, required: true },
+    instructorId: { type: Number, required: true },
     date: { type: String, required: true },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
     durationMinutes: { type: Number, required: true },
-    status: { type: String, enum: Object.values(BookingStatus), default: BookingStatus.PENDING }
-}, {
-    timestamps: { createdAt: true, updatedAt: false }
+    status: { type: String, enum: Object.values(BookingStatus), default: BookingStatus.PENDING },
+    createdAt: { type: Date, default: Date.now }
 });
 
-BookingSchema.index({ date: 1, startTime: 1 });
-BookingSchema.index({ userId: 1 });
+BookingSchema.index({ instructorId: 1, date: 1 });
+BookingSchema.index({ studentId: 1 });
 
-export const Booking = mongoose.model<IBooking>('Booking', BookingSchema);
+export const BookingModel = model<IBooking>("Booking", BookingSchema);
