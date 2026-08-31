@@ -38,7 +38,7 @@ const start = async () => {
                         const pingUrl = `${RENDER_EXTERNAL_URL}/ping`;
                         await fetch(pingUrl);
                         console.log(`📡 Keep-alive ping sent to ${pingUrl}`);
-                    } catch (err) {
+                    } catch (err: any) {
                         console.error('❌ Keep-alive ping failed:', err.message);
                     }
                 }, FOURTEEN_MINUTES);
