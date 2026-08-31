@@ -81,8 +81,27 @@ authComposer.callbackQuery("role_student", async (ctx) => {
 });
 
 authComposer.callbackQuery("role_instructor", async (ctx) => {
-    await ctx.editMessageText("Hizmat uchun Maxfiy Kodni (Passcode) kiriting:");
-    ctx.session.tempBooking = { ...ctx.session.tempBooking, date: 'AWAIT_PASSCODE' };
+    const telegramId = ctx.from?.id;
+    if (!telegramId) return;
+
+    let user = await UserModel.findOne({ telegramId });
+    if (!user) {
+        user = new UserModel({
+            telegramId,
+            fullName: ctx.from.first_name,
+            phone: "N/A",
+            role: UserRole.INSTRUCTOR
+        });
+        await user.save();
+    }
+
+    const profile = await InstructorProfileModel.findOne({ userId: telegramId });
+    if (!profile) {
+        await ctx.editMessageText("Instruktor profili sozlanmoqda...");
+        await ctx.conversation.enter("instructorSetupConversation");
+    } else {
+        await ctx.editMessageText("Tizimga muvaffaqiyatli kirdingiz! (Instruktor). \nBoshqaruv uchun /admin ni bosing.");
+    }
     await ctx.answerCallbackQuery();
 });
 
@@ -106,32 +125,4 @@ authComposer.on("message:contact", async (ctx) => {
     }
 });
 
-authComposer.on("message:text", async (ctx, next) => {
-    if (ctx.session.tempBooking?.date === 'AWAIT_PASSCODE') {
-        ctx.session.tempBooking.date = undefined;
-        if (ctx.message.text === "INSTRUCTOR") {
-            const telegramId = ctx.from.id;
-            let user = await UserModel.findOne({ telegramId });
-            if (!user) {
-                user = new UserModel({
-                    telegramId,
-                    fullName: ctx.from.first_name,
-                    phone: "N/A",
-                    role: UserRole.INSTRUCTOR
-                });
-                await user.save();
-            }
-
-            const profile = await InstructorProfileModel.findOne({ userId: telegramId });
-            if (!profile) {
-                await ctx.conversation.enter("instructorSetupConversation");
-            } else {
-                await ctx.reply("Tizimga muvaffaqiyatli kirdingiz! (Instruktor). \nBoshqaruv uchun /admin ni bosing.");
-            }
-        } else {
-            await ctx.reply("Maxfiy kod xato. Qayta urinib ko'ring yoki /start orqali O'quvchi sifatida kiring.");
-        }
-        return;
-    }
-    await next();
-});
+// Olib tashlangan passcode listeneri
