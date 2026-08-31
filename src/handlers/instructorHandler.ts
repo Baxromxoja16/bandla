@@ -17,29 +17,46 @@ const isInstructor = async (ctx: MyContext) => {
 export async function editProfileConversation(conversation: any, ctx: MyContext) {
     const telegramId = ctx.from?.id!;
 
-    await ctx.reply("Yangi Ism Familiyangizni kiriting:");
+    // Ma'lumotlarni bazadan olish
+    const existingUser = await UserModel.findOne({ telegramId });
+    const existingProfile = await InstructorProfileModel.findOne({ userId: telegramId });
+
+    await ctx.reply(`Yangi Ism Familiyangizni kiriting\n(Joriy ismingiz: ${existingUser?.fullName || "Kiritilmagan"})\n\nO'zgartirmaslik uchun /skip ni yuboring:`);
     const nameCtx = await conversation.wait();
-    const fullName = nameCtx.message?.text || "Noma'lum";
+    const nameText = nameCtx.message?.text?.trim();
+    if (nameText && nameText.toLowerCase() !== '/skip') {
+        await UserModel.updateOne({ telegramId }, { fullName: nameText });
+    }
 
-    await UserModel.updateOne({ telegramId }, { fullName });
-
-    await ctx.reply("Yangi Avtomobil modeli va raqamini vergul bilan ajratib kiriting (Gentra, 01 A 777 AA):");
+    const currentCar = existingProfile ? `${existingProfile.carModel}, ${existingProfile.carNumber}` : "Kiritilmagan";
+    await ctx.reply(`Yangi Avtomobil modeli va raqamini vergul bilan ajratib kiriting (Joriy avtomobil: ${currentCar}).\n\nO'zgartirmaslik uchun /skip ni yuboring:`);
     const carCtx = await conversation.wait();
-    const carDetails = carCtx.message?.text || "Kiritilmadi";
+    const carText = carCtx.message?.text?.trim();
 
+    let carModel = existingProfile?.carModel;
+    let carNumber = existingProfile?.carNumber;
+
+    if (carText && carText.toLowerCase() !== '/skip') {
+        const parts = carText.split(',');
+        carModel = parts[0]?.trim() || carText;
+        carNumber = parts[1]?.trim() || "N/A";
+    }
+
+    const currentTrans = existingProfile?.transmission === 'MANUAL' ? '🕹 Mexanika' : '🅰️ Avtomat';
     const transmissionKb = new InlineKeyboard()
         .text("🕹 Mexanika", "trans_MANUAL")
-        .text("🅰️ Avtomat", "trans_AUTOMATIC");
+        .text("🅰️ Avtomat", "trans_AUTOMATIC")
+        .row()
+        .text("🔙 Eskisini qoldirish", "trans_SKIP");
 
-    await ctx.reply("Yangi Uzatish qutisi (Transmission) turini tanlang:", { reply_markup: transmissionKb });
+    await ctx.reply(`Yangi Uzatish qutisi (Transmission) turini tanlang (Joriy: ${currentTrans}):`, { reply_markup: transmissionKb });
 
-    const transCtx = await conversation.waitForCallbackQuery(["trans_MANUAL", "trans_AUTOMATIC"]);
-    const transmission = transCtx.match === "trans_MANUAL" ? "MANUAL" : "AUTOMATIC";
+    const transCtx = await conversation.waitForCallbackQuery(["trans_MANUAL", "trans_AUTOMATIC", "trans_SKIP"]);
+    let transmission = existingProfile?.transmission;
+    if (transCtx.match !== 'trans_SKIP') {
+        transmission = transCtx.match === "trans_MANUAL" ? "MANUAL" : "AUTOMATIC";
+    }
     await transCtx.answerCallbackQuery();
-
-    const parts = carDetails.split(',');
-    const carModel = parts[0]?.trim() || carDetails;
-    const carNumber = parts[1]?.trim() || "N/A";
 
     await InstructorProfileModel.updateOne({ userId: telegramId }, {
         carModel,
